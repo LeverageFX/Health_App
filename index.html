@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PULSE · Health</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000; --surface:#0C0E13; --surface2:#13161D; --line:#1E222C; --text:#F4F6FA; --muted:#7A8197; --faint:#454B5C;
+    --accent:#4F86F7; --accent-soft:rgba(79,134,247,.16);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%;}
+  body{
+    background:radial-gradient(130% 60% at 50% 8%, var(--accent-soft), transparent 60%), var(--bg);
+    color:var(--text); font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+    transition:background .7s ease; overscroll-behavior:none;
+  }
+  body.nudge{animation:nudgeflash .5s ease-in-out 4;}
+  @keyframes nudgeflash{0%,100%{background:radial-gradient(130% 60% at 50% 8%, var(--accent-soft), transparent 60%),#000;} 50%{background:radial-gradient(130% 60% at 50% 8%, rgba(251,191,36,.28), transparent 62%),#1a1405;}}
+  .wrap{max-width:460px; margin:0 auto; padding:12px 16px 60px;}
+
+  /* top */
+  .top{display:flex; align-items:center; justify-content:space-between; padding:4px 2px 2px;}
+  .brand{font-family:'Oswald'; font-weight:700; letter-spacing:.3em; font-size:12px; color:var(--muted); text-transform:uppercase;}
+  .brand b{color:var(--accent); transition:color .7s;}
+  .topbtns{display:flex; gap:8px;}
+  .ibtn{border:1px solid var(--line); background:var(--surface); color:var(--text); width:40px; height:40px; border-radius:11px; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .conn{font-family:'Oswald'; font-weight:600; letter-spacing:.1em; font-size:12px; text-transform:uppercase; border:1px solid var(--line); background:var(--surface); color:var(--text); padding:0 14px; height:40px; border-radius:999px; display:flex; align-items:center; gap:7px; cursor:pointer; transition:.4s;}
+  .conn .dot{width:7px; height:7px; border-radius:50%; background:var(--faint);}
+  .conn.live{border-color:var(--accent); color:var(--accent);} .conn.live .dot{background:var(--accent); box-shadow:0 0 9px var(--accent);}
+  .conn.demo{border-color:#caa23a; color:#e8c25a;} .conn.demo .dot{background:#e8c25a; box-shadow:0 0 9px #e8c25a;}
+
+  /* mode tabs */
+  .tabs{display:flex; gap:6px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:5px; margin:14px 0 6px;}
+  .tab{flex:1; font-family:'Oswald'; font-weight:600; letter-spacing:.08em; text-transform:uppercase; font-size:12.5px; padding:11px 0; border-radius:10px; text-align:center; color:var(--muted); cursor:pointer; transition:.25s; display:flex; align-items:center; justify-content:center; gap:6px;}
+  .tab.on{background:var(--accent-soft); color:var(--accent);}
+
+  /* ring */
+  .ringbox{position:relative; width:290px; height:290px; margin:8px auto 0;}
+  .ringbox svg{position:absolute; inset:0;}
+  #track{stroke:#15181F;}
+  #prog{stroke:var(--accent); filter:drop-shadow(0 0 8px var(--accent)); transition:stroke .55s, stroke-dashoffset .5s cubic-bezier(.2,.7,.3,1), filter .55s;}
+  #floorTick{stroke:#EEF1F7; opacity:.8;}
+  #alertRing{stroke:#FBBF24; opacity:0;}
+  body.alarm #alertRing{animation:flash .7s ease-in-out infinite;}
+  @keyframes flash{0%,100%{opacity:0;} 50%{opacity:.9;}}
+  .center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .heart{font-size:20px; line-height:1; color:var(--accent); filter:drop-shadow(0 0 8px var(--accent)); transition:color .55s,filter .55s; animation:beat 1s ease-in-out infinite;}
+  @keyframes beat{0%,100%{transform:scale(1);} 16%{transform:scale(1.32);} 30%{transform:scale(1);} 44%{transform:scale(1.14);}}
+  .num{font-family:'Archivo'; font-weight:900; font-variant-numeric:tabular-nums; font-size:80px; line-height:.84; letter-spacing:-.03em; margin-top:3px;}
+  .unit{font-family:'Oswald'; font-weight:600; letter-spacing:.24em; font-size:11px; color:var(--muted); margin-top:2px;}
+  .zone{font-family:'Oswald'; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--accent); margin-top:10px; transition:color .55s; min-height:16px; text-align:center; padding:0 12px;}
+  .zone .pct{color:var(--muted); font-weight:500; margin-left:6px;}
+  .zone.warn{color:#FBBF24;}
+
+  /* stats */
+  .stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:20px;}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:13px; padding:11px 10px; text-align:center;}
+  .stat .v{font-family:'Archivo'; font-weight:800; font-size:23px; font-variant-numeric:tabular-nums;}
+  .stat .l{font-family:'Oswald'; letter-spacing:.08em; text-transform:uppercase; font-size:10px; color:var(--muted); margin-top:3px;}
+
+  .zbar{display:flex; height:9px; border-radius:6px; overflow:hidden; margin:14px 0 6px; background:#15181F;}
+  .zbar span{transition:flex .6s;}
+  .zlegend{display:flex; justify-content:space-between; font-family:'Oswald'; font-size:10px; letter-spacing:.05em; color:var(--muted); text-transform:uppercase;}
+
+  /* mode panel */
+  .panel{margin-top:18px;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:15px; padding:15px;}
+  .deskstate{text-align:center; padding:6px 0 2px;}
+  .deskstate .big{font-family:'Oswald'; font-weight:700; letter-spacing:.1em; text-transform:uppercase; font-size:20px;}
+  .deskstate .sub{font-size:13px; color:var(--muted); margin-top:6px;}
+  .deskstate.sit .big{color:#FBBF24;}
+  .deskstate.move .big{color:var(--accent);}
+
+  .ex{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:9px;}
+  .ex-top{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+  .ex-name{font-weight:700; font-size:15px;}
+  .ex-t{font-family:'Oswald'; letter-spacing:.05em; color:var(--muted); font-size:12.5px; white-space:nowrap;}
+  .ex-bot{display:flex; align-items:center; justify-content:space-between; margin-top:11px;}
+  .dots{display:flex; gap:6px;}
+  .dot-s{width:12px; height:12px; border-radius:50%; border:1.5px solid var(--faint); transition:.25s;}
+  .dot-s.on{background:var(--accent); border-color:var(--accent); box-shadow:0 0 7px var(--accent);}
+  .logbtn{font-family:'Oswald'; font-weight:600; letter-spacing:.08em; text-transform:uppercase; font-size:12.5px; background:var(--accent-soft); color:var(--accent); border:none; padding:9px 15px; border-radius:10px; cursor:pointer;}
+  .logbtn.done{color:var(--muted); background:var(--surface2);}
+  .wpick{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+  .wpick h2{font-family:'Oswald'; font-weight:700; letter-spacing:.05em; text-transform:uppercase; font-size:19px; margin:0; cursor:pointer;}
+  .wpick h2 .c{color:var(--accent); font-size:14px; margin-left:5px;}
+  .resttimer{text-align:center; font-family:'Archivo'; font-weight:900; font-size:18px; color:var(--accent); padding:4px 0;}
+
+  .seg{display:flex; gap:6px; margin-top:10px;}
+  .seg button{flex:1; font-family:'Oswald'; font-weight:600; letter-spacing:.05em; text-transform:uppercase; font-size:11px; padding:9px 0; border-radius:9px; border:1px solid var(--line); background:#0A0C11; color:var(--muted); cursor:pointer;}
+  .seg button.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+
+  /* sheet */
+  .sheet{position:fixed; inset:0; background:rgba(0,0,0,.66); display:none; align-items:flex-end; z-index:60;}
+  .sheet.show{display:flex;}
+  .sheet-in{background:var(--surface); width:100%; max-width:460px; margin:0 auto; border-radius:22px 22px 0 0; padding:8px 18px 30px; border:1px solid var(--line); border-bottom:none; max-height:88vh; overflow:auto;}
+  .grab{width:40px; height:4px; border-radius:4px; background:var(--line); margin:6px auto 16px;}
+  .sheet h3{font-family:'Oswald'; letter-spacing:.14em; text-transform:uppercase; font-size:12px; color:var(--muted); margin:0 0 14px;}
+  .frow{display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--line); gap:12px;}
+  .frow label{font-size:14px; color:var(--text);}
+  .frow .hint{font-size:11px; color:var(--faint); margin-top:2px;}
+  .frow input[type=number]{width:90px; background:#0A0C11; border:1px solid var(--line); color:var(--text); padding:9px 11px; border-radius:9px; font-size:15px; text-align:right; font-variant-numeric:tabular-nums;}
+  .sexbtns{display:flex; gap:6px;}
+  .sexbtns button{font-family:'Oswald'; letter-spacing:.05em; text-transform:uppercase; font-size:11px; padding:8px 13px; border-radius:8px; border:1px solid var(--line); background:#0A0C11; color:var(--muted); cursor:pointer;}
+  .sexbtns button.on{border-color:var(--accent); color:var(--accent);}
+  .pick{display:flex; align-items:center; justify-content:space-between; padding:15px 2px; border-bottom:1px solid var(--line); cursor:pointer; font-weight:600; font-size:16px;}
+  .pick:last-child{border:none;} .pick.active{color:var(--accent);} .pick .c{font-size:11px; color:var(--muted); font-family:'Oswald'; letter-spacing:.06em;}
+  @media (prefers-reduced-motion:reduce){.heart{animation:none!important;} body.alarm #alertRing{animation:none!important;opacity:.85;} body.nudge{animation:none!important;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><b>&hearts;</b> PULSE · HEALTH</div>
+    <div class="topbtns">
+      <button class="ibtn" id="gear" aria-label="Settings">&#9881;</button>
+      <button class="conn" id="conn"><span class="dot"></span><span id="connTxt">Connect</span></button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" data-mode="desk">&#128187; Desk</div>
+    <div class="tab" data-mode="walk">&#128694; Walk</div>
+    <div class="tab" data-mode="lift">&#127947; Lift</div>
+  </div>
+
+  <div class="ringbox">
+    <svg width="290" height="290" viewBox="0 0 290 290">
+      <circle id="track" cx="145" cy="145" r="126" fill="none" stroke-width="15"/>
+      <circle id="prog" cx="145" cy="145" r="126" fill="none" stroke-width="15" stroke-linecap="round" stroke-dasharray="791.7" stroke-dashoffset="791.7" transform="rotate(-90 145 145)"/>
+      <circle id="alertRing" cx="145" cy="145" r="126" fill="none" stroke-width="3"/>
+      <line id="floorTick" x1="145" y1="19" x2="145" y2="42" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <div class="center">
+      <div class="heart" id="heart" style="animation-play-state:paused">&hearts;</div>
+      <div class="num" id="num">&mdash;</div>
+      <div class="unit" id="unit">no sensor</div>
+      <div class="zone" id="zone">Connect your OH1</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v" id="sActive">0</div><div class="l">Active min</div></div>
+    <div class="stat"><div class="v" id="sKcal">0</div><div class="l">Est. kcal</div></div>
+    <div class="stat"><div class="v" id="sNudge">0</div><div class="l" id="sNudgeL">Nudges</div></div>
+  </div>
+  <div class="zbar" id="zbar"></div>
+  <div class="zlegend"><span>Recovery</span><span>Endur</span><span>Aerobic</span><span>Thresh</span><span>Max</span></div>
+
+  <div class="panel" id="panel"></div>
+</div>
+
+<!-- SETTINGS SHEET -->
+<div class="sheet" id="setSheet">
+  <div class="sheet-in">
+    <div class="grab"></div>
+    <h3>Settings</h3>
+    <div class="frow"><div><label>Max heart rate</label><div class="hint">~220 − your age</div></div><input type="number" id="setMax" min="120" max="230"></div>
+    <div class="frow"><div><label>Move floor (Desk/Walk)</label><div class="hint">Nudge when HR falls below this</div></div><input type="number" id="setFloor" min="70" max="160"></div>
+    <div class="frow"><div><label>Rest floor (Lift)</label><div class="hint">Keep HR up between sets</div></div><input type="number" id="setRest" min="80" max="160"></div>
+    <div class="frow"><div><label>Nudge after (sec)</label><div class="hint">Sedentary time before alert</div></div><input type="number" id="setDelay" min="15" max="900" step="15"></div>
+    <div class="frow"><div><label>Weight (lb)</label><div class="hint">For calorie estimate</div></div><input type="number" id="setWt" min="80" max="400"></div>
+    <div class="frow"><div><label>Age</label></div><input type="number" id="setAge" min="12" max="100"></div>
+    <div class="frow"><div><label>Sex</label><div class="hint">Calorie formula only</div></div><div class="sexbtns"><button id="sexM">Male</button><button id="sexF">Female</button></div></div>
+    <div class="frow"><div style="flex:1"><label>Alerts</label><div class="hint">Voice uses your iPhone's built-in speech</div></div><div class="sexbtns" id="alertBtns"><button data-a="off">Off</button><button data-a="beep">Beep</button><button data-a="voice">Voice</button><button data-a="both">Both</button></div></div>
+    <div class="frow" style="border:none"><div style="flex:1"><label>Voice</label><div class="hint">More natural voices: iOS Settings → Accessibility → Spoken Content → Voices</div></div><div style="display:flex;gap:6px;align-items:center"><select id="voiceSel" style="max-width:130px;background:#0A0C11;border:1px solid var(--line);color:var(--text);padding:8px;border-radius:9px;font-size:13px"></select><button id="voiceTest" style="border:1px solid var(--line);background:#0A0C11;color:var(--accent);padding:9px 12px;border-radius:9px;cursor:pointer">▶</button></div></div>
+  </div>
+</div>
+
+<!-- WORKOUT PICKER -->
+<div class="sheet" id="wSheet"><div class="sheet-in"><div class="grab"></div><h3>Choose workout</h3><div id="picks"></div></div></div>
+
+<script>
+/* ===== EDIT YOUR WORKOUTS — add/rename freely, or paste into an AI ===== */
+const WORKOUTS = {
+  "Push Day":[{name:"Bench Press",sets:4,reps:"6-8",weight:135,rest:150},{name:"Overhead Press",sets:4,reps:"6-8",weight:75,rest:120},{name:"Incline DB Press",sets:3,reps:"8-10",weight:50,rest:90},{name:"Triceps Pushdown",sets:3,reps:"10-12",weight:50,rest:75},{name:"Lateral Raise",sets:3,reps:"12-15",weight:20,rest:60}],
+  "Pull Day":[{name:"Deadlift",sets:3,reps:"5",weight:225,rest:180},{name:"Barbell Row",sets:4,reps:"6-8",weight:135,rest:120},{name:"Lat Pulldown",sets:3,reps:"8-10",weight:120,rest:90},{name:"Face Pull",sets:3,reps:"12-15",weight:40,rest:60},{name:"Barbell Curl",sets:3,reps:"8-10",weight:65,rest:75}],
+  "Leg Day":[{name:"Back Squat",sets:4,reps:"5-8",weight:185,rest:180},{name:"Romanian Deadlift",sets:3,reps:"8-10",weight:155,rest:120},{name:"Leg Press",sets:3,reps:"10-12",weight:270,rest:90},{name:"Leg Curl",sets:3,reps:"12-15",weight:80,rest:60},{name:"Calf Raise",sets:4,reps:"12-15",weight:120,rest:45}],
+};
+const ZONES=[{name:"Recovery",min:0,color:"#4F86F7"},{name:"Endurance",min:.6,color:"#2DD4BF"},{name:"Aerobic",min:.7,color:"#34D399"},{name:"Threshold",min:.8,color:"#FBBF24"},{name:"Max",min:.9,color:"#FB3B5C"}];
+const C=791.7, $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+
+const S={ maxHR:185, moveFloor:100, restFloor:110, nudgeDelay:60, weightLb:175, age:40, sex:'male', alert:'both', voiceURI:null };
+const st={ bpm:null, mode:'desk', src:null, btChar:null, demo:0, demoT:88,
+  zoneSec:[0,0,0,0,0,0], activeSec:0, kcal:0, nudges:0, belowSince:null,
+  workout:"Push Day", logged:{}, rest:{active:false,end:0,raf:0,spokeLow:false}, walkTarget:2, lastZi:-1, lastRedline:0 };
+
+/* ---------- helpers ---------- */
+function zoneFor(v){const f=v/S.maxHR;let z=ZONES[0];for(const zz of ZONES)if(f>=zz.min)z=zz;return{z,f,i:ZONES.indexOf(z)};}
+function frac(v){return Math.max(0,Math.min(1,(v/S.maxHR-.5)/.5));}
+function setAccent(c){document.documentElement.style.setProperty('--accent',c);const r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);document.documentElement.style.setProperty('--accent-soft',`rgba(${r},${g},${b},.16)`);}
+function tickPos(v){const a=(-90+frac(v)*360)*Math.PI/180;return{x1:145+114*Math.cos(a),y1:145+114*Math.sin(a),x2:145+138*Math.cos(a),y2:145+138*Math.sin(a)};}
+function fmtMin(sec){return Math.floor(sec/60);}
+
+/* ---------- floor state per mode ---------- */
+function floorState(){
+  if(st.bpm==null) return {floor:S.moveFloor, level:'ok', msg:''};
+  if(st.mode==='lift'){
+    const f=S.restFloor;
+    if(st.rest.active && st.bpm<f) return {floor:f, level:'alarm', msg:'&#9650; Keep moving'};
+    return {floor:f, level:'ok', msg:''};
+  }
+  if(st.mode==='walk'){
+    const f=S.moveFloor;
+    if(st.bpm<f) return {floor:f, level:'soft', msg:'Pick up the pace'};
+    return {floor:f, level:'ok', msg:''};
+  }
+  // desk
+  const f=S.moveFloor;
+  if(st.bpm<f){
+    const secs = st.belowSince? Math.floor((Date.now()-st.belowSince)/1000):0;
+    return {floor:f, level: secs>=S.nudgeDelay?'alarm':'soft', msg:'&#9650; Stand &amp; move'};
+  }
+  return {floor:f, level:'ok', msg:''};
+}
+
+/* ---------- render ring ---------- */
+function renderRing(){
+  const heart=$('#heart'), num=$('#num'), unit=$('#unit'), zEl=$('#zone');
+  if(st.bpm==null){
+    num.textContent='—'; unit.textContent='no sensor'; zEl.textContent='Connect your OH1'; zEl.classList.remove('warn');
+    heart.style.animationPlayState='paused'; document.body.classList.remove('alarm'); return;
+  }
+  const {z,f}=zoneFor(st.bpm); setAccent(z.color);
+  $('#prog').setAttribute('stroke-dashoffset',(C*(1-frac(st.bpm))).toFixed(1));
+  num.textContent=Math.round(st.bpm); unit.textContent='beats / min';
+  heart.style.animationPlayState='running'; heart.style.animationDuration=(60/Math.max(45,Math.min(200,st.bpm)))+'s';
+  const t=tickPos(floorState().floor), fl=$('#floorTick');
+  fl.setAttribute('x1',t.x1.toFixed(1)); fl.setAttribute('y1',t.y1.toFixed(1)); fl.setAttribute('x2',t.x2.toFixed(1)); fl.setAttribute('y2',t.y2.toFixed(1));
+  const fs=floorState();
+  document.body.classList.toggle('alarm', fs.level==='alarm');
+  if(fs.level==='alarm'||fs.level==='soft'){ zEl.classList.add('warn'); zEl.innerHTML=fs.msg; }
+  else { zEl.classList.remove('warn'); zEl.innerHTML=z.name+'<span class="pct">'+Math.round(f*100)+'% max</span>'; }
+}
+
+/* ---------- render stats ---------- */
+function renderStats(){
+  $('#sActive').textContent=fmtMin(st.activeSec);
+  $('#sKcal').textContent=Math.round(st.kcal);
+  if(st.mode==='lift'){ const ex=WORKOUTS[st.workout]; const done=ex.reduce((a,e)=>a+Math.min(e.sets,(st.logged[st.workout]&&st.logged[st.workout][e.name])||0),0); const tot=ex.reduce((a,e)=>a+e.sets,0); $('#sNudge').textContent=done+'/'+tot; $('#sNudgeL').textContent='Sets'; }
+  else { $('#sNudge').textContent=st.nudges; $('#sNudgeL').textContent='Nudges'; }
+  const total=st.zoneSec.reduce((a,b)=>a+b,0)||1;
+  $('#zbar').innerHTML=ZONES.map((z,i)=>`<span style="flex:${st.zoneSec[i]/total};background:${z.color}"></span>`).join('');
+}
+
+/* ---------- render mode panel ---------- */
+function renderPanel(){
+  const p=$('#panel');
+  if(st.mode==='desk'){
+    const sitting = st.bpm!=null && st.bpm<S.moveFloor;
+    const secs = st.belowSince? Math.floor((Date.now()-st.belowSince)/1000):0;
+    p.innerHTML=`<div class="card"><div class="deskstate ${sitting?'sit':'move'}">
+      <div class="big">${st.bpm==null?'—':(sitting?'Sitting':'Moving')}</div>
+      <div class="sub">${st.bpm==null?'Connect to start guarding your desk time':(sitting?`Below ${S.moveFloor} bpm for ${secs}s · nudge at ${S.nudgeDelay}s`:`Nice — HR above your ${S.moveFloor} floor`)}</div>
+    </div></div>`;
+  } else if(st.mode==='walk'){
+    const tz=ZONES[st.walkTarget];
+    let status='—';
+    if(st.bpm!=null){ const cur=zoneFor(st.bpm).i; status = cur<st.walkTarget?'Below target — push':(cur>st.walkTarget?'Above target — ease off':'In target zone'); }
+    p.innerHTML=`<div class="card"><div style="font-family:'Oswald';letter-spacing:.1em;text-transform:uppercase;font-size:12px;color:var(--muted)">Target zone</div>
+      <div class="seg" id="walkSeg">${ZONES.slice(1,4).map((z,k)=>`<button data-z="${k+1}" class="${st.walkTarget===k+1?'on':''}" style="${st.walkTarget===k+1?'border-color:'+z.color+';color:'+z.color:''}">${z.name}</button>`).join('')}</div>
+      <div style="text-align:center;font-family:'Oswald';letter-spacing:.08em;text-transform:uppercase;font-size:15px;margin-top:14px;color:${st.bpm!=null&&zoneFor(st.bpm).i===st.walkTarget?tz.color:'var(--muted)'}">${status}</div></div>`;
+    $$('#walkSeg button').forEach(b=>b.onclick=()=>{st.walkTarget=+b.dataset.z;renderPanel();});
+  } else {
+    const ex=WORKOUTS[st.workout];
+    let cards=ex.map(e=>{const done=(st.logged[st.workout]&&st.logged[st.workout][e.name])||0;let dots='';for(let i=0;i<e.sets;i++)dots+=`<div class="dot-s ${i<done?'on':''}"></div>`;const fin=done>=e.sets;
+      return `<div class="ex"><div class="ex-top"><div class="ex-name">${e.name}</div><div class="ex-t">${e.weight} lb · ${e.sets}×${e.reps}</div></div><div class="ex-bot"><div class="dots">${dots}</div><button class="logbtn ${fin?'done':''}" data-ex="${e.name}">${fin?'Done ✓':'Log set'}</button></div></div>`;}).join('');
+    const restHtml = st.rest.active? `<div class="resttimer" id="rt"></div>`:'';
+    p.innerHTML=`<div class="wpick"><h2 id="wname">${st.workout}<span class="c">▾</span></h2></div>${restHtml}${cards}`;
+    $('#wname').onclick=openWorkoutSheet;
+    $$('.logbtn').forEach(b=>b.onclick=()=>logSet(ex.find(e=>e.name===b.dataset.ex)));
+  }
+}
+function render(){renderRing();renderStats();renderPanel();}
+
+/* ---------- workout / rest ---------- */
+function logSet(e){
+  st.logged[st.workout]=st.logged[st.workout]||{};
+  const cur=(st.logged[st.workout][e.name])||0; if(cur>=e.sets)return;
+  st.logged[st.workout][e.name]=cur+1;
+  if(st.src==='demo') st.demoT=Math.min(178,(st.bpm||100)+16+Math.random()*12);
+  startRest(e.rest||90); render();
+}
+function startRest(sec){
+  st.rest.active=true; st.rest.spokeLow=false; st.rest.end=performance.now()+sec*1000; cancelAnimationFrame(st.rest.raf);
+  const loop=()=>{const left=Math.max(0,(st.rest.end-performance.now())/1000);const rt=$('#rt');
+    if(rt){const m=Math.floor(left/60),s=Math.floor(left%60);rt.textContent='REST  '+m+':'+String(s).padStart(2,'0');}
+    if(left>0)st.rest.raf=requestAnimationFrame(loop); else {st.rest.active=false;renderPanel();}};
+  loop(); renderPanel();
+}
+
+/* ---------- alerts (beep + iPhone built-in voice) ---------- */
+let actx, voices=[], primed=false;
+function beep(n=2){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended')actx.resume(); let t=actx.currentTime;
+  for(let i=0;i<n;i++){const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=880;o.connect(g);g.connect(actx.destination);g.gain.setValueAtTime(.0008,t);g.gain.exponentialRampToValueAtTime(.4,t+.02);g.gain.exponentialRampToValueAtTime(.0008,t+.2);o.start(t);o.stop(t+.22);t+=.3;} }catch(e){} }
+function loadVoices(){ if(!('speechSynthesis'in window))return; voices=speechSynthesis.getVoices()||[]; const sel=$('#voiceSel'); if(sel){ const en=voices.filter(v=>/^en/i.test(v.lang)); sel.innerHTML=en.map(v=>`<option value="${v.voiceURI}">${v.name}</option>`).join(''); if(!S.voiceURI&&en.length){ const pref=en.find(v=>v.localService)||en[0]; S.voiceURI=pref.voiceURI; } if(S.voiceURI)sel.value=S.voiceURI; } }
+function primeVoice(){ if(!('speechSynthesis'in window)||primed)return; try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); primed=true; }catch(e){} }
+function speak(text){ if(!('speechSynthesis'in window))return; try{ const u=new SpeechSynthesisUtterance(text); const v=voices.find(x=>x.voiceURI===S.voiceURI); if(v)u.voice=v; u.rate=1; u.pitch=1; speechSynthesis.speak(u); }catch(e){} }
+function alertOut(phrase,beeps){ if(S.alert==='off')return; if(S.alert==='beep'||S.alert==='both')beep(beeps); if(S.alert==='voice'||S.alert==='both')speak(phrase); }
+if('speechSynthesis'in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+const DESK_PHRASES=["Time to stand up and move.","Let's get moving — stand up and walk.","Heart rate's low. Stand and walk it up."];
+function fireNudge(){ st.nudges++; alertOut(DESK_PHRASES[Math.floor(Math.random()*DESK_PHRASES.length)],3); if(navigator.vibrate)navigator.vibrate([220,120,220,120,220]); document.body.classList.add('nudge'); setTimeout(()=>document.body.classList.remove('nudge'),2200); renderStats(); }
+
+/* ---------- 1s loop ---------- */
+function kcalMin(hr){const w=S.weightLb/2.2046,a=S.age;let v=S.sex==='male'?(-55.0969+.6309*hr+.1988*w+.2017*a)/4.184:(-20.4022+.4472*hr-.1263*w+.074*a)/4.184;return Math.max(0,v);}
+setInterval(()=>{
+  if(st.bpm==null)return;
+  st.zoneSec[zoneFor(st.bpm).i]++; st.kcal+=kcalMin(st.bpm)/60;
+  if(st.bpm>=S.moveFloor)st.activeSec++;
+  if(st.mode==='desk'){
+    if(st.bpm<S.moveFloor){ if(st.belowSince==null)st.belowSince=Date.now(); if(Date.now()-st.belowSince>=S.nudgeDelay*1000){fireNudge();st.belowSince=Date.now();} }
+    else st.belowSince=null;
+  } else st.belowSince=null;
+  const zi=zoneFor(st.bpm).i;
+  if(zi===4 && st.lastZi!==4 && Date.now()-st.lastRedline>20000){ alertOut("Ease off — you're in the max zone.",2); st.lastRedline=Date.now(); }
+  st.lastZi=zi;
+  if(st.mode==='lift' && st.rest.active && st.bpm<S.restFloor && !st.rest.spokeLow){ alertOut("Keep moving — keep your heart rate up.",2); st.rest.spokeLow=true; }
+  render();
+},1000);
+
+/* ---------- HR source ---------- */
+function setConn(m){st.src=m;const b=$('#conn'),t=$('#connTxt');b.classList.remove('live','demo');if(m==='live'){b.classList.add('live');t.textContent='Live';}else if(m==='demo'){b.classList.add('demo');t.textContent='Demo';}else t.textContent='Connect';}
+async function keepAwake(){try{if('wakeLock'in navigator)await navigator.wakeLock.request('screen');}catch(e){}}
+async function connect(){
+  if(st.src){disconnect();return;}
+  if(actx&&actx.state==='suspended')actx.resume(); primeVoice(); keepAwake();
+  if(navigator.bluetooth){try{
+    const dev=await navigator.bluetooth.requestDevice({filters:[{services:['heart_rate']}]});
+    const srv=await dev.gatt.connect();
+    const ch=await (await srv.getPrimaryService('heart_rate')).getCharacteristic('heart_rate_measurement');
+    st.btChar=ch;
+    ch.addEventListener('characteristicvaluechanged',e=>{const dv=e.target.value,fl=dv.getUint8(0);st.bpm=(fl&1)?dv.getUint16(1,true):dv.getUint8(1);render();});
+    await ch.startNotifications(); dev.addEventListener('gattserverdisconnected',disconnect); setConn('live'); return;
+  }catch(err){ if(err&&err.name==='NotFoundError')return; }}
+  startDemo();
+}
+function disconnect(){ if(st.btChar){try{st.btChar.stopNotifications();}catch(e){}st.btChar=null;} if(st.demo){clearInterval(st.demo);st.demo=0;} st.bpm=null; setConn(null); render(); }
+function startDemo(){ setConn('demo'); st.bpm=85; if(actx&&actx.state==='suspended')actx.resume();
+  st.demo=setInterval(()=>{ const base = st.mode==='desk'?86:(st.mode==='walk'?120:108);
+    if(st.src==='demo' && Math.abs(st.demoT-base)>40) st.demoT=base;
+    st.demoT+= (base-st.demoT)*0.04 + (Math.random()-0.5)*5;
+    if(st.mode==='desk') st.demoT=Math.max(72,Math.min(118,st.demoT));
+    st.bpm+=Math.round((st.demoT-st.bpm)*0.3+(Math.random()-0.5)*2); st.bpm=Math.max(68,Math.min(184,st.bpm)); render();
+  },1100);
+}
+$('#conn').onclick=connect;
+
+/* ---------- mode tabs ---------- */
+$$('.tab').forEach(t=>t.onclick=()=>{st.mode=t.dataset.mode;$$('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');st.belowSince=null;if(st.src==='demo')st.demoT= st.mode==='desk'?86:(st.mode==='walk'?120:108);render();});
+
+/* ---------- workout sheet ---------- */
+function openWorkoutSheet(){const pk=$('#picks');pk.innerHTML=Object.keys(WORKOUTS).map(n=>{const s=WORKOUTS[n].reduce((a,e)=>a+e.sets,0);return `<div class="pick ${n===st.workout?'active':''}" data-w="${n}"><span>${n}</span><span class="c">${WORKOUTS[n].length} ex · ${s} sets</span></div>`;}).join('');$$('#picks .pick').forEach(r=>r.onclick=()=>{st.workout=r.dataset.w;$('#wSheet').classList.remove('show');render();});$('#wSheet').classList.add('show');}
+$('#wSheet').onclick=e=>{if(e.target.id==='wSheet')e.currentTarget.classList.remove('show');};
+
+/* ---------- settings sheet ---------- */
+function syncSettings(){$('#setMax').value=S.maxHR;$('#setFloor').value=S.moveFloor;$('#setRest').value=S.restFloor;$('#setDelay').value=S.nudgeDelay;$('#setWt').value=S.weightLb;$('#setAge').value=S.age;$('#sexM').classList.toggle('on',S.sex==='male');$('#sexF').classList.toggle('on',S.sex==='female');$$('#alertBtns button').forEach(b=>b.classList.toggle('on',b.dataset.a===S.alert));if($('#voiceSel')&&S.voiceURI)$('#voiceSel').value=S.voiceURI;}
+$('#gear').onclick=()=>{syncSettings();$('#setSheet').classList.add('show');};
+$('#setSheet').onclick=e=>{if(e.target.id==='setSheet')e.currentTarget.classList.remove('show');};
+const bind=(id,key,min,max)=>{$(id).addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v))return;v=Math.max(min,Math.min(max,v));S[key]=v;e.target.value=v;render();});};
+bind('#setMax','maxHR',120,230);bind('#setFloor','moveFloor',70,160);bind('#setRest','restFloor',80,160);bind('#setDelay','nudgeDelay',15,900);bind('#setWt','weightLb',80,400);bind('#setAge','age',12,100);
+$('#sexM').onclick=()=>{S.sex='male';syncSettings();};$('#sexF').onclick=()=>{S.sex='female';syncSettings();};
+$$('#alertBtns button').forEach(b=>b.onclick=()=>{S.alert=b.dataset.a;primeVoice();if(actx&&actx.state==='suspended')actx.resume();syncSettings();});
+$('#voiceSel').onchange=e=>{S.voiceURI=e.target.value;};
+$('#voiceTest').onclick=()=>{primeVoice();if(S.voiceURI&&$('#voiceSel').value)S.voiceURI=$('#voiceSel').value;speak("Heart rate looks good. This is your alert voice.");};
+
+render();
+</script>
+</body>
+</html>
