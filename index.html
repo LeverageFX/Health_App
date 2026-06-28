@@ -53,9 +53,12 @@
   .center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
   .heart{font-size:20px; line-height:1; color:var(--accent); filter:drop-shadow(0 0 8px var(--accent)); transition:color .55s,filter .55s; animation:beat 1s ease-in-out infinite;}
   @keyframes beat{0%,100%{transform:scale(1);} 16%{transform:scale(1.32);} 30%{transform:scale(1);} 44%{transform:scale(1.14);}}
-  .num{font-family:'Archivo'; font-weight:900; font-variant-numeric:tabular-nums; font-size:80px; line-height:.84; letter-spacing:-.03em; margin-top:3px;}
-  .unit{font-family:'Oswald'; font-weight:600; letter-spacing:.24em; font-size:11px; color:var(--muted); margin-top:2px;}
-  .zone{font-family:'Oswald'; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--accent); margin-top:10px; transition:color .55s; min-height:16px; text-align:center; padding:0 12px;}
+  .num{font-family:'Archivo'; font-weight:900; font-variant-numeric:tabular-nums; font-size:66px; line-height:.84; letter-spacing:-.03em; margin-top:2px;}
+  .num .bpmlab{font-family:'Oswald'; font-weight:600; font-size:15px; letter-spacing:.12em; color:var(--muted); margin-left:6px; vertical-align:middle;}
+  .rest-line{font-family:'Oswald'; font-weight:600; letter-spacing:.14em; text-transform:uppercase; font-size:10.5px; color:var(--muted); margin-top:3px;}
+  .rest-line b{color:var(--text); font-weight:700;}
+  #trace{display:block; width:158px; height:40px; margin:7px auto 0;}
+  .zone{font-family:'Oswald'; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--accent); margin-top:8px; transition:color .55s; min-height:16px; text-align:center; padding:0 12px;}
   .zone .pct{color:var(--muted); font-weight:500; margin-left:6px;}
   .zone.warn{color:#FBBF24;}
 
@@ -120,6 +123,7 @@
   <div class="top">
     <div class="brand"><b>&hearts;</b> PULSE · HEALTH</div>
     <div class="topbtns">
+      <button class="ibtn" id="hist" aria-label="History">&#128202;</button>
       <button class="ibtn" id="gear" aria-label="Settings">&#9881;</button>
       <button class="conn" id="conn"><span class="dot"></span><span id="connTxt">Connect</span></button>
     </div>
@@ -140,8 +144,9 @@
     </svg>
     <div class="center">
       <div class="heart" id="heart" style="animation-play-state:paused">&hearts;</div>
-      <div class="num" id="num">&mdash;</div>
-      <div class="unit" id="unit">no sensor</div>
+      <div class="num" id="num"><span id="numv">&mdash;</span><span class="bpmlab">BPM</span></div>
+      <div class="rest-line" id="restLine">resting <b>75</b> bpm</div>
+      <canvas id="trace" width="316" height="80"></canvas>
       <div class="zone" id="zone">Connect your OH1</div>
     </div>
   </div>
@@ -163,6 +168,7 @@
     <div class="grab"></div>
     <h3>Settings</h3>
     <div class="frow"><div><label>Max heart rate</label><div class="hint">~220 − your age</div></div><input type="number" id="setMax" min="120" max="230"></div>
+    <div class="frow"><div><label>Resting heart rate</label><div class="hint">Your baseline, shown under the live BPM</div></div><input type="number" id="setRestHR" min="35" max="110"></div>
     <div class="frow"><div><label>Move floor (Desk/Walk)</label><div class="hint">Nudge when HR falls below this</div></div><input type="number" id="setFloor" min="70" max="160"></div>
     <div class="frow"><div><label>Rest floor (Lift)</label><div class="hint">Keep HR up between sets</div></div><input type="number" id="setRest" min="80" max="160"></div>
     <div class="frow"><div><label>Nudge after (sec)</label><div class="hint">Sedentary time before alert</div></div><input type="number" id="setDelay" min="15" max="900" step="15"></div>
@@ -177,6 +183,15 @@
 <!-- WORKOUT PICKER -->
 <div class="sheet" id="wSheet"><div class="sheet-in"><div class="grab"></div><h3>Choose workout</h3><div id="picks"></div></div></div>
 
+<!-- HISTORY -->
+<div class="sheet" id="histSheet"><div class="sheet-in"><div class="grab"></div><h3>History</h3><div id="histList"></div>
+  <div style="display:flex;gap:8px;margin-top:18px">
+    <button id="expBtn" style="flex:1;font-family:'Oswald';letter-spacing:.08em;text-transform:uppercase;font-size:12px;padding:12px;border-radius:11px;border:1px solid var(--line);background:#0A0C11;color:var(--text);cursor:pointer">Export backup</button>
+    <label for="impFile" style="flex:1;font-family:'Oswald';letter-spacing:.08em;text-transform:uppercase;font-size:12px;padding:12px;border-radius:11px;border:1px solid var(--line);background:#0A0C11;color:var(--accent);cursor:pointer;text-align:center">Import<input type="file" id="impFile" accept="application/json,.json" style="display:none"></label>
+  </div>
+  <div class="hint" style="margin-top:10px;font-size:11px;color:var(--faint)">Backup saves your settings + all history as a file. Keep it in iCloud/Files.</div>
+</div></div>
+
 <script>
 /* ===== EDIT YOUR WORKOUTS — add/rename freely, or paste into an AI ===== */
 const WORKOUTS = {
@@ -187,10 +202,26 @@ const WORKOUTS = {
 const ZONES=[{name:"Recovery",min:0,color:"#4F86F7"},{name:"Endurance",min:.6,color:"#2DD4BF"},{name:"Aerobic",min:.7,color:"#34D399"},{name:"Threshold",min:.8,color:"#FBBF24"},{name:"Max",min:.9,color:"#FB3B5C"}];
 const C=791.7, $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 
-const S={ maxHR:185, moveFloor:100, restFloor:110, nudgeDelay:60, weightLb:175, age:40, sex:'male', alert:'both', voiceURI:null };
+const S={ maxHR:185, restingHR:75, moveFloor:100, restFloor:110, nudgeDelay:60, weightLb:175, age:40, sex:'male', alert:'both', voiceURI:null };
 const st={ bpm:null, mode:'desk', src:null, btChar:null, demo:0, demoT:88,
   zoneSec:[0,0,0,0,0,0], activeSec:0, kcal:0, nudges:0, belowSince:null,
-  workout:"Push Day", logged:{}, rest:{active:false,end:0,raf:0,spokeLow:false}, walkTarget:2, lastZi:-1, lastRedline:0 };
+  workout:"Push Day", logged:{}, rest:{active:false,end:0,raf:0,spokeLow:false}, walkTarget:2, lastZi:-1, lastRedline:0, day:null };
+
+/* ---------- persistence (localStorage, on-device) ---------- */
+const data={ days:{} };
+function dateKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function saveSettings(){ try{ localStorage.setItem('pulse.settings', JSON.stringify(S)); }catch(e){} }
+let saveTimer;
+function snapshotToday(){ data.days[st.day]={ activeSec:st.activeSec, kcal:Math.round(st.kcal*10)/10, nudges:st.nudges, zoneSec:st.zoneSec.slice(), sets:st.logged }; }
+function persist(){ snapshotToday(); clearTimeout(saveTimer); saveTimer=setTimeout(flush,1200); }
+function flush(){ snapshotToday(); try{ localStorage.setItem('pulse.days', JSON.stringify(data.days)); }catch(e){} }
+function loadAll(){
+  try{ const s=JSON.parse(localStorage.getItem('pulse.settings')); if(s)Object.assign(S,s); }catch(e){}
+  try{ const d=JSON.parse(localStorage.getItem('pulse.days')); if(d)data.days=d; }catch(e){}
+  st.day=dateKey(); const r=data.days[st.day];
+  if(r){ st.activeSec=r.activeSec||0; st.kcal=r.kcal||0; st.nudges=r.nudges||0; if(r.zoneSec)st.zoneSec=r.zoneSec.slice(); if(r.sets)st.logged=r.sets; }
+}
+loadAll();
 
 /* ---------- helpers ---------- */
 function zoneFor(v){const f=v/S.maxHR;let z=ZONES[0];for(const zz of ZONES)if(f>=zz.min)z=zz;return{z,f,i:ZONES.indexOf(z)};}
@@ -223,14 +254,15 @@ function floorState(){
 
 /* ---------- render ring ---------- */
 function renderRing(){
-  const heart=$('#heart'), num=$('#num'), unit=$('#unit'), zEl=$('#zone');
+  const heart=$('#heart'), numv=$('#numv'), zEl=$('#zone');
+  $('#restLine').innerHTML='resting <b>'+S.restingHR+'</b> bpm';
   if(st.bpm==null){
-    num.textContent='—'; unit.textContent='no sensor'; zEl.textContent='Connect your OH1'; zEl.classList.remove('warn');
-    heart.style.animationPlayState='paused'; document.body.classList.remove('alarm'); return;
+    numv.textContent='—'; zEl.textContent='Connect your OH1'; zEl.classList.remove('warn');
+    heart.style.animationPlayState='paused'; document.body.classList.remove('alarm'); drawTrace(); return;
   }
   const {z,f}=zoneFor(st.bpm); setAccent(z.color);
   $('#prog').setAttribute('stroke-dashoffset',(C*(1-frac(st.bpm))).toFixed(1));
-  num.textContent=Math.round(st.bpm); unit.textContent='beats / min';
+  numv.textContent=Math.round(st.bpm);
   heart.style.animationPlayState='running'; heart.style.animationDuration=(60/Math.max(45,Math.min(200,st.bpm)))+'s';
   const t=tickPos(floorState().floor), fl=$('#floorTick');
   fl.setAttribute('x1',t.x1.toFixed(1)); fl.setAttribute('y1',t.y1.toFixed(1)); fl.setAttribute('x2',t.x2.toFixed(1)); fl.setAttribute('y2',t.y2.toFixed(1));
@@ -238,6 +270,23 @@ function renderRing(){
   document.body.classList.toggle('alarm', fs.level==='alarm');
   if(fs.level==='alarm'||fs.level==='soft'){ zEl.classList.add('warn'); zEl.innerHTML=fs.msg; }
   else { zEl.classList.remove('warn'); zEl.innerHTML=z.name+'<span class="pct">'+Math.round(f*100)+'% max</span>'; }
+  drawTrace();
+}
+
+/* ---------- live HR trace (real recent BPM) ---------- */
+const trace=[], TRACE_MAX=90;
+function drawTrace(){
+  const cv=$('#trace'); if(!cv)return; const ctx=cv.getContext('2d'); const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  if(trace.length<2)return;
+  const lo=Math.min.apply(null,trace), hi=Math.max.apply(null,trace), rng=Math.max(10,hi-lo);
+  const col=(getComputedStyle(document.documentElement).getPropertyValue('--accent')||'#4F86F7').trim();
+  const step=W/(TRACE_MAX-1), L=trace.length;
+  const pts=trace.map((v,i)=>[ W-(L-1-i)*step, H-4-((v-lo)/rng)*(H-12) ]);
+  ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],mx=(a[0]+b[0])/2;ctx.quadraticCurveTo(a[0],a[1],mx,(a[1]+b[1])/2);ctx.quadraticCurveTo(mx,(a[1]+b[1])/2,b[0],b[1]);}
+  ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=col; ctx.lineWidth=3; ctx.shadowColor=col; ctx.shadowBlur=9; ctx.stroke();
+  const e=pts[pts.length-1]; ctx.beginPath(); ctx.fillStyle=col; ctx.shadowBlur=12; ctx.arc(e[0],e[1],3.5,0,7); ctx.fill();
 }
 
 /* ---------- render stats ---------- */
@@ -286,7 +335,7 @@ function logSet(e){
   const cur=(st.logged[st.workout][e.name])||0; if(cur>=e.sets)return;
   st.logged[st.workout][e.name]=cur+1;
   if(st.src==='demo') st.demoT=Math.min(178,(st.bpm||100)+16+Math.random()*12);
-  startRest(e.rest||90); render();
+  startRest(e.rest||90); render(); persist();
 }
 function startRest(sec){
   st.rest.active=true; st.rest.spokeLow=false; st.rest.end=performance.now()+sec*1000; cancelAnimationFrame(st.rest.raf);
@@ -312,7 +361,10 @@ function fireNudge(){ st.nudges++; alertOut(DESK_PHRASES[Math.floor(Math.random(
 function kcalMin(hr){const w=S.weightLb/2.2046,a=S.age;let v=S.sex==='male'?(-55.0969+.6309*hr+.1988*w+.2017*a)/4.184:(-20.4022+.4472*hr-.1263*w+.074*a)/4.184;return Math.max(0,v);}
 setInterval(()=>{
   if(st.bpm==null)return;
+  const tk=dateKey();
+  if(tk!==st.day){ flush(); st.day=tk; st.activeSec=0; st.kcal=0; st.nudges=0; st.zoneSec=[0,0,0,0,0,0]; st.logged={}; }
   st.zoneSec[zoneFor(st.bpm).i]++; st.kcal+=kcalMin(st.bpm)/60;
+  trace.push(st.bpm); if(trace.length>TRACE_MAX)trace.shift();
   if(st.bpm>=S.moveFloor)st.activeSec++;
   if(st.mode==='desk'){
     if(st.bpm<S.moveFloor){ if(st.belowSince==null)st.belowSince=Date.now(); if(Date.now()-st.belowSince>=S.nudgeDelay*1000){fireNudge();st.belowSince=Date.now();} }
@@ -322,7 +374,7 @@ setInterval(()=>{
   if(zi===4 && st.lastZi!==4 && Date.now()-st.lastRedline>20000){ alertOut("Ease off — you're in the max zone.",2); st.lastRedline=Date.now(); }
   st.lastZi=zi;
   if(st.mode==='lift' && st.rest.active && st.bpm<S.restFloor && !st.rest.spokeLow){ alertOut("Keep moving — keep your heart rate up.",2); st.rest.spokeLow=true; }
-  render();
+  render(); persist();
 },1000);
 
 /* ---------- HR source ---------- */
@@ -332,7 +384,7 @@ async function connect(){
   if(st.src){disconnect();return;}
   if(actx&&actx.state==='suspended')actx.resume(); primeVoice(); keepAwake();
   if(navigator.bluetooth){try{
-    const dev=await navigator.bluetooth.requestDevice({filters:[{services:['heart_rate']}]});
+    const dev=await navigator.bluetooth.requestDevice({filters:[{services:['heart_rate']},{namePrefix:'Polar'}],optionalServices:['heart_rate']});
     const srv=await dev.gatt.connect();
     const ch=await (await srv.getPrimaryService('heart_rate')).getCharacteristic('heart_rate_measurement');
     st.btChar=ch;
@@ -341,8 +393,8 @@ async function connect(){
   }catch(err){ if(err&&err.name==='NotFoundError')return; }}
   startDemo();
 }
-function disconnect(){ if(st.btChar){try{st.btChar.stopNotifications();}catch(e){}st.btChar=null;} if(st.demo){clearInterval(st.demo);st.demo=0;} st.bpm=null; setConn(null); render(); }
-function startDemo(){ setConn('demo'); st.bpm=85; if(actx&&actx.state==='suspended')actx.resume();
+function disconnect(){ if(st.btChar){try{st.btChar.stopNotifications();}catch(e){}st.btChar=null;} if(st.demo){clearInterval(st.demo);st.demo=0;} st.bpm=null; trace.length=0; setConn(null); render(); }
+function startDemo(){ setConn('demo'); st.bpm=85; trace.length=0; for(let i=0;i<24;i++)trace.push(82+Math.round(Math.sin(i/3)*4)); if(actx&&actx.state==='suspended')actx.resume();
   st.demo=setInterval(()=>{ const base = st.mode==='desk'?86:(st.mode==='walk'?120:108);
     if(st.src==='demo' && Math.abs(st.demoT-base)>40) st.demoT=base;
     st.demoT+= (base-st.demoT)*0.04 + (Math.random()-0.5)*5;
@@ -360,15 +412,32 @@ function openWorkoutSheet(){const pk=$('#picks');pk.innerHTML=Object.keys(WORKOU
 $('#wSheet').onclick=e=>{if(e.target.id==='wSheet')e.currentTarget.classList.remove('show');};
 
 /* ---------- settings sheet ---------- */
-function syncSettings(){$('#setMax').value=S.maxHR;$('#setFloor').value=S.moveFloor;$('#setRest').value=S.restFloor;$('#setDelay').value=S.nudgeDelay;$('#setWt').value=S.weightLb;$('#setAge').value=S.age;$('#sexM').classList.toggle('on',S.sex==='male');$('#sexF').classList.toggle('on',S.sex==='female');$$('#alertBtns button').forEach(b=>b.classList.toggle('on',b.dataset.a===S.alert));if($('#voiceSel')&&S.voiceURI)$('#voiceSel').value=S.voiceURI;}
+function syncSettings(){$('#setMax').value=S.maxHR;$('#setRestHR').value=S.restingHR;$('#setFloor').value=S.moveFloor;$('#setRest').value=S.restFloor;$('#setDelay').value=S.nudgeDelay;$('#setWt').value=S.weightLb;$('#setAge').value=S.age;$('#sexM').classList.toggle('on',S.sex==='male');$('#sexF').classList.toggle('on',S.sex==='female');$$('#alertBtns button').forEach(b=>b.classList.toggle('on',b.dataset.a===S.alert));if($('#voiceSel')&&S.voiceURI)$('#voiceSel').value=S.voiceURI;}
 $('#gear').onclick=()=>{syncSettings();$('#setSheet').classList.add('show');};
 $('#setSheet').onclick=e=>{if(e.target.id==='setSheet')e.currentTarget.classList.remove('show');};
-const bind=(id,key,min,max)=>{$(id).addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v))return;v=Math.max(min,Math.min(max,v));S[key]=v;e.target.value=v;render();});};
-bind('#setMax','maxHR',120,230);bind('#setFloor','moveFloor',70,160);bind('#setRest','restFloor',80,160);bind('#setDelay','nudgeDelay',15,900);bind('#setWt','weightLb',80,400);bind('#setAge','age',12,100);
-$('#sexM').onclick=()=>{S.sex='male';syncSettings();};$('#sexF').onclick=()=>{S.sex='female';syncSettings();};
-$$('#alertBtns button').forEach(b=>b.onclick=()=>{S.alert=b.dataset.a;primeVoice();if(actx&&actx.state==='suspended')actx.resume();syncSettings();});
-$('#voiceSel').onchange=e=>{S.voiceURI=e.target.value;};
+const bind=(id,key,min,max)=>{$(id).addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v))return;v=Math.max(min,Math.min(max,v));S[key]=v;e.target.value=v;saveSettings();render();});};
+bind('#setMax','maxHR',120,230);bind('#setRestHR','restingHR',35,110);bind('#setFloor','moveFloor',70,160);bind('#setRest','restFloor',80,160);bind('#setDelay','nudgeDelay',15,900);bind('#setWt','weightLb',80,400);bind('#setAge','age',12,100);
+$('#sexM').onclick=()=>{S.sex='male';saveSettings();syncSettings();};$('#sexF').onclick=()=>{S.sex='female';saveSettings();syncSettings();};
+$$('#alertBtns button').forEach(b=>b.onclick=()=>{S.alert=b.dataset.a;primeVoice();if(actx&&actx.state==='suspended')actx.resume();saveSettings();syncSettings();});
+$('#voiceSel').onchange=e=>{S.voiceURI=e.target.value;saveSettings();};
 $('#voiceTest').onclick=()=>{primeVoice();if(S.voiceURI&&$('#voiceSel').value)S.voiceURI=$('#voiceSel').value;speak("Heart rate looks good. This is your alert voice.");};
+
+/* ---------- history ---------- */
+function openHistory(){
+  flush();
+  const keys=Object.keys(data.days).sort().reverse();
+  const hl=$('#histList');
+  if(!keys.length){ hl.innerHTML='<div style="color:var(--muted);font-size:14px;padding:8px 0">No history yet — connect and start moving.</div>'; }
+  else hl.innerHTML=keys.map(k=>{const r=data.days[k];const sets=r.sets?Object.values(r.sets).reduce((a,o)=>a+Object.values(o).reduce((x,y)=>x+y,0),0):0;const d=new Date(k+'T00:00:00');const lbl=d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+    return `<div class="frow"><div><label>${lbl}${k===st.day?' · today':''}</label><div class="hint">${Math.floor((r.activeSec||0)/60)} active min · ${sets} sets</div></div><div style="text-align:right"><div style="font-family:'Archivo';font-weight:800;font-size:18px">${Math.round(r.kcal||0)}<span style="font-size:11px;color:var(--muted)"> kcal</span></div><div class="hint">${r.nudges||0} nudges</div></div></div>`;}).join('');
+  $('#histSheet').classList.add('show');
+}
+$('#hist').onclick=openHistory;
+$('#histSheet').onclick=e=>{if(e.target.id==='histSheet')e.currentTarget.classList.remove('show');};
+$('#expBtn').onclick=()=>{ flush(); const blob=new Blob([JSON.stringify({settings:S,days:data.days},null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='pulse-health-backup-'+dateKey()+'.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000); };
+$('#impFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ try{ const j=JSON.parse(rd.result); if(j.settings)Object.assign(S,j.settings); if(j.days)data.days=j.days; saveSettings(); flush(); loadAll(); syncSettings(); render(); openHistory(); }catch(err){ alert('Could not read that backup file.'); } }; rd.readAsText(f); };
+
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) flush(); });
 
 render();
 </script>
