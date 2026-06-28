@@ -42,23 +42,19 @@
   .tab.on{background:var(--accent-soft); color:var(--accent);}
 
   /* ring */
-  .ringbox{position:relative; width:290px; height:290px; margin:8px auto 0;}
-  .ringbox svg{position:absolute; inset:0;}
-  #track{stroke:#15181F;}
-  #prog{stroke:var(--accent); filter:drop-shadow(0 0 8px var(--accent)); transition:stroke .55s, stroke-dashoffset .5s cubic-bezier(.2,.7,.3,1), filter .55s;}
-  #floorTick{stroke:#EEF1F7; opacity:.8;}
-  #alertRing{stroke:#FBBF24; opacity:0;}
+  .ringbox{position:relative; width:316px; height:316px; margin:8px auto 0;}
+  .ringbox svg, .ringbox .center{position:absolute; inset:0;}
+  #alertRing{stroke:#FBBF24; opacity:0; fill:none;}
+  #floorTick{stroke:#EEF1F7; opacity:.85;}
   body.alarm #alertRing{animation:flash .7s ease-in-out infinite;}
   @keyframes flash{0%,100%{opacity:0;} 50%{opacity:.9;}}
-  .center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
-  .heart{font-size:20px; line-height:1; color:var(--accent); filter:drop-shadow(0 0 8px var(--accent)); transition:color .55s,filter .55s; animation:beat 1s ease-in-out infinite;}
+  .center{display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .heart{font-size:26px; line-height:1; color:var(--accent); filter:drop-shadow(0 0 10px var(--accent)); transition:color .55s,filter .55s; animation:beat 1s ease-in-out infinite; margin-bottom:2px;}
   @keyframes beat{0%,100%{transform:scale(1);} 16%{transform:scale(1.32);} 30%{transform:scale(1);} 44%{transform:scale(1.14);}}
-  .num{font-family:'Archivo'; font-weight:900; font-variant-numeric:tabular-nums; font-size:66px; line-height:.84; letter-spacing:-.03em; margin-top:2px;}
-  .num .bpmlab{font-family:'Oswald'; font-weight:600; font-size:15px; letter-spacing:.12em; color:var(--muted); margin-left:6px; vertical-align:middle;}
-  .rest-line{font-family:'Oswald'; font-weight:600; letter-spacing:.14em; text-transform:uppercase; font-size:10.5px; color:var(--muted); margin-top:3px;}
-  .rest-line b{color:var(--text); font-weight:700;}
-  #trace{display:block; width:158px; height:40px; margin:7px auto 0;}
-  .zone{font-family:'Oswald'; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--accent); margin-top:8px; transition:color .55s; min-height:16px; text-align:center; padding:0 12px;}
+  .num{font-family:'Archivo'; font-weight:900; font-variant-numeric:tabular-nums; font-size:70px; line-height:.84; letter-spacing:-.03em; color:var(--accent); transition:color .5s;}
+  .ecgwrap{margin-top:11px; width:176px; height:50px; border-radius:8px; background:rgba(13,38,66,.45); border:1px solid rgba(60,120,190,.28); overflow:hidden;}
+  .ecgwrap canvas{display:block; width:176px; height:50px;}
+  .zone{font-family:'Oswald'; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--accent); margin-top:9px; transition:color .55s; min-height:16px; text-align:center; padding:0 12px;}
   .zone .pct{color:var(--muted); font-weight:500; margin-left:6px;}
   .zone.warn{color:#FBBF24;}
 
@@ -129,24 +125,25 @@
     </div>
   </div>
 
+  <!-- ============ DO NOT REMOVE: MODE TABS (Desk / Walk / Lift) — core app feature ============ -->
   <div class="tabs">
     <div class="tab on" data-mode="desk">&#128187; Desk</div>
     <div class="tab" data-mode="walk">&#128694; Walk</div>
     <div class="tab" data-mode="lift">&#127947; Lift</div>
   </div>
+  <!-- ============ END MODE TABS ============ -->
 
   <div class="ringbox">
-    <svg width="290" height="290" viewBox="0 0 290 290">
-      <circle id="track" cx="145" cy="145" r="126" fill="none" stroke-width="15"/>
-      <circle id="prog" cx="145" cy="145" r="126" fill="none" stroke-width="15" stroke-linecap="round" stroke-dasharray="791.7" stroke-dashoffset="791.7" transform="rotate(-90 145 145)"/>
-      <circle id="alertRing" cx="145" cy="145" r="126" fill="none" stroke-width="3"/>
-      <line id="floorTick" x1="145" y1="19" x2="145" y2="42" stroke-width="3" stroke-linecap="round"/>
+    <svg width="316" height="316" viewBox="0 0 316 316">
+      <g id="segs"></g>
+      <circle id="alertRing" cx="158" cy="158" r="150" stroke-width="3"/>
+      <line id="floorTick" x1="158" y1="6" x2="158" y2="26" stroke-width="3" stroke-linecap="round"/>
     </svg>
     <div class="center">
       <div class="heart" id="heart" style="animation-play-state:paused">&hearts;</div>
-      <div class="num" id="num"><span id="numv">&mdash;</span><span class="bpmlab">BPM</span></div>
-      <div class="rest-line" id="restLine">resting <b>75</b> bpm</div>
-      <canvas id="trace" width="316" height="80"></canvas>
+      <div class="num" id="numv">&mdash;</div>
+      <div class="ecgwrap"><canvas id="ecg" width="352" height="100"></canvas></div>
+      <!-- DO NOT REMOVE: #zone is the live ZONE label AND the alert message channel (Stand & move / Keep moving) -->
       <div class="zone" id="zone">Connect your OH1</div>
     </div>
   </div>
@@ -200,14 +197,18 @@ const WORKOUTS = {
   "Leg Day":[{name:"Back Squat",sets:4,reps:"5-8",weight:185,rest:180},{name:"Romanian Deadlift",sets:3,reps:"8-10",weight:155,rest:120},{name:"Leg Press",sets:3,reps:"10-12",weight:270,rest:90},{name:"Leg Curl",sets:3,reps:"12-15",weight:80,rest:60},{name:"Calf Raise",sets:4,reps:"12-15",weight:120,rest:45}],
 };
 const ZONES=[{name:"Recovery",min:0,color:"#4F86F7"},{name:"Endurance",min:.6,color:"#2DD4BF"},{name:"Aerobic",min:.7,color:"#34D399"},{name:"Threshold",min:.8,color:"#FBBF24"},{name:"Max",min:.9,color:"#FB3B5C"}];
-const C=791.7, $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+/* per-zone depth gradient [dark->bright] for the segmented ring blocks */
+const GRAD=[['#1E5B9E','#8AD2FF'],['#0E7A66','#62EDCB'],['#2C7A1E','#9BE86A'],['#9A6510','#FFCF5E'],['#9A2740','#FF7088']];
+/* ring geometry: N wide curved blocks, white top anchor (block 0 = resting baseline) */
+const RN=26, RCX=158, RCY=158, RRI=120, RRO=148, RGAP=1.8;
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 
 const S={ maxHR:185, restingHR:75, moveFloor:100, restFloor:110, nudgeDelay:60, weightLb:175, age:40, sex:'male', alert:'both', voiceURI:null };
 const st={ bpm:null, mode:'desk', src:null, btChar:null, demo:0, demoT:88,
   zoneSec:[0,0,0,0,0,0], activeSec:0, kcal:0, nudges:0, belowSince:null,
   workout:"Push Day", logged:{}, rest:{active:false,end:0,raf:0,spokeLow:false}, walkTarget:2, lastZi:-1, lastRedline:0, day:null };
 
-/* ---------- persistence (localStorage, on-device) ---------- */
+/* ===== DO NOT REMOVE: PERSISTENCE — settings + daily history saved on-device (localStorage) ===== */
 const data={ days:{} };
 function dateKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function saveSettings(){ try{ localStorage.setItem('pulse.settings', JSON.stringify(S)); }catch(e){} }
@@ -225,12 +226,31 @@ loadAll();
 
 /* ---------- helpers ---------- */
 function zoneFor(v){const f=v/S.maxHR;let z=ZONES[0];for(const zz of ZONES)if(f>=zz.min)z=zz;return{z,f,i:ZONES.indexOf(z)};}
-function frac(v){return Math.max(0,Math.min(1,(v/S.maxHR-.5)/.5));}
-function setAccent(c){document.documentElement.style.setProperty('--accent',c);const r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);document.documentElement.style.setProperty('--accent-soft',`rgba(${r},${g},${b},.16)`);}
-function tickPos(v){const a=(-90+frac(v)*360)*Math.PI/180;return{x1:145+114*Math.cos(a),y1:145+114*Math.sin(a),x2:145+138*Math.cos(a),y2:145+138*Math.sin(a)};}
+/* fill runs from resting (top white block) to max HR around the ring */
+function frac(v){return Math.max(0,Math.min(1,(v-S.restingHR)/(S.maxHR-S.restingHR)));}
+function lerpHex(a,b,t){const A=[1,3,5].map(i=>parseInt(a.substr(i,2),16)),B=[1,3,5].map(i=>parseInt(b.substr(i,2),16));return '#'+A.map((v,k)=>Math.round(v+(B[k]-v)*t).toString(16).padStart(2,'0')).join('');}
+function setAccent(c){document.documentElement.style.setProperty('--accent',c);const r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);document.documentElement.style.setProperty('--accent-soft',`rgba(${r},${g},${b},.18)`);}
+function rpol(r,deg){const a=deg*Math.PI/180;return [RCX+r*Math.cos(a), RCY+r*Math.sin(a)];}
+function rsector(a1,a2){const [ox1,oy1]=rpol(RRO,a1),[ox2,oy2]=rpol(RRO,a2),[ix2,iy2]=rpol(RRI,a2),[ix1,iy1]=rpol(RRI,a1);
+  return `M${ox1.toFixed(1)} ${oy1.toFixed(1)} A${RRO} ${RRO} 0 0 1 ${ox2.toFixed(1)} ${oy2.toFixed(1)} L${ix2.toFixed(1)} ${iy2.toFixed(1)} A${RRI} ${RRI} 0 0 0 ${ix1.toFixed(1)} ${iy1.toFixed(1)} Z`;}
+function drawSegs(){
+  const zi=zoneFor(st.bpm==null?S.restingHR:st.bpm).i, [dk,lt]=GRAD[zi], step=360/RN, half=step/2;
+  const active = st.bpm==null?0:Math.round(frac(st.bpm)*(RN-1));
+  let s='';
+  for(let i=0;i<RN;i++){
+    const c=-90+i*step, d=rsector(c-half+RGAP, c+half-RGAP);
+    let fill, glow='', op=1;
+    if(i===0){ fill='#EEF2F8'; glow='filter:drop-shadow(0 0 5px #EEF2F8);'; }          // white top = resting anchor
+    else if(i<=active){ const t=active>1?(i-1)/(active-1):1; fill=lerpHex(dk,lt,t); glow=`filter:drop-shadow(0 0 5px ${fill});`; }
+    else { fill='#0C0F16'; op=.92; }                                                    // dark unlit side
+    s+=`<path d="${d}" fill="${fill}" style="${glow}" opacity="${op}"/>`;
+  }
+  $('#segs').innerHTML=s;
+}
+function tickPos(v){const a=(-90+frac(v)*360)*Math.PI/180;return{x1:RCX+(RRI-6)*Math.cos(a),y1:RCY+(RRI-6)*Math.sin(a),x2:RCX+(RRO+6)*Math.cos(a),y2:RCY+(RRO+6)*Math.sin(a)};}
 function fmtMin(sec){return Math.floor(sec/60);}
 
-/* ---------- floor state per mode ---------- */
+/* ===== DO NOT REMOVE: FLOOR + ALERT LOGIC per mode (Desk nudge / Walk pace / Lift rest) ===== */
 function floorState(){
   if(st.bpm==null) return {floor:S.moveFloor, level:'ok', msg:''};
   if(st.mode==='lift'){
@@ -252,16 +272,17 @@ function floorState(){
   return {floor:f, level:'ok', msg:''};
 }
 
-/* ---------- render ring ---------- */
+/* ---------- render ring (segmented gradient blocks + white top anchor) ---------- */
 function renderRing(){
   const heart=$('#heart'), numv=$('#numv'), zEl=$('#zone');
-  $('#restLine').innerHTML='resting <b>'+S.restingHR+'</b> bpm';
+  drawSegs();
   if(st.bpm==null){
-    numv.textContent='—'; zEl.textContent='Connect your OH1'; zEl.classList.remove('warn');
-    heart.style.animationPlayState='paused'; document.body.classList.remove('alarm'); drawTrace(); return;
+    numv.textContent='—'; numv.style.color=''; zEl.textContent='Connect your OH1'; zEl.classList.remove('warn');
+    heart.style.animationPlayState='paused'; document.body.classList.remove('alarm'); return;
   }
-  const {z,f}=zoneFor(st.bpm); setAccent(z.color);
-  $('#prog').setAttribute('stroke-dashoffset',(C*(1-frac(st.bpm))).toFixed(1));
+  const {z,f,i}=zoneFor(st.bpm); const [dk,lt]=GRAD[i];
+  setAccent(lerpHex(dk,lt,.72));
+  numv.style.color=lerpHex(dk,lt,.62);
   numv.textContent=Math.round(st.bpm);
   heart.style.animationPlayState='running'; heart.style.animationDuration=(60/Math.max(45,Math.min(200,st.bpm)))+'s';
   const t=tickPos(floorState().floor), fl=$('#floorTick');
@@ -270,24 +291,31 @@ function renderRing(){
   document.body.classList.toggle('alarm', fs.level==='alarm');
   if(fs.level==='alarm'||fs.level==='soft'){ zEl.classList.add('warn'); zEl.innerHTML=fs.msg; }
   else { zEl.classList.remove('warn'); zEl.innerHTML=z.name+'<span class="pct">'+Math.round(f*100)+'% max</span>'; }
-  drawTrace();
 }
 
-/* ---------- live HR trace (real recent BPM) ---------- */
-const trace=[], TRACE_MAX=90;
-function drawTrace(){
-  const cv=$('#trace'); if(!cv)return; const ctx=cv.getContext('2d'); const W=cv.width,H=cv.height;
-  ctx.clearRect(0,0,W,H);
-  if(trace.length<2)return;
-  const lo=Math.min.apply(null,trace), hi=Math.max.apply(null,trace), rng=Math.max(10,hi-lo);
-  const col=(getComputedStyle(document.documentElement).getPropertyValue('--accent')||'#4F86F7').trim();
-  const step=W/(TRACE_MAX-1), L=trace.length;
-  const pts=trace.map((v,i)=>[ W-(L-1-i)*step, H-4-((v-lo)/rng)*(H-12) ]);
-  ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
-  for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],mx=(a[0]+b[0])/2;ctx.quadraticCurveTo(a[0],a[1],mx,(a[1]+b[1])/2);ctx.quadraticCurveTo(mx,(a[1]+b[1])/2,b[0],b[1]);}
-  ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=col; ctx.lineWidth=3; ctx.shadowColor=col; ctx.shadowBlur=9; ctx.stroke();
-  const e=pts[pts.length-1]; ctx.beginPath(); ctx.fillStyle=col; ctx.shadowBlur=12; ctx.arc(e[0],e[1],3.5,0,7); ctx.fill();
+/* ---------- ECG: blue grid + spiky PQRST trace, scrolls at your real BPM ---------- */
+const _ecg=$('#ecg'), _ectx=_ecg?_ecg.getContext('2d'):null, _EW=_ecg?_ecg.width:0, _EH=_ecg?_ecg.height:0;
+let _ephase=0,_elast=0;
+function ecgVal(p){let y=0;
+  y+=0.10*Math.exp(-Math.pow((p-0.18)/0.022,2)); y-=0.10*Math.exp(-Math.pow((p-0.255)/0.010,2));
+  y+=1.00*Math.exp(-Math.pow((p-0.285)/0.007,2)); y-=0.28*Math.exp(-Math.pow((p-0.315)/0.010,2));
+  y+=0.20*Math.exp(-Math.pow((p-0.46)/0.045,2)); return y;}
+function drawECG(){
+  if(!_ectx)return; const W=_EW,H=_EH;
+  _ectx.clearRect(0,0,W,H);
+  _ectx.lineWidth=1; _ectx.strokeStyle='rgba(60,120,190,0.16)';
+  for(let x=0;x<=W;x+=15){_ectx.beginPath();_ectx.moveTo(x,0);_ectx.lineTo(x,H);_ectx.stroke();}
+  for(let y=0;y<=H;y+=15){_ectx.beginPath();_ectx.moveTo(0,y);_ectx.lineTo(W,y);_ectx.stroke();}
+  _ectx.strokeStyle='rgba(70,140,215,0.30)';
+  for(let x=0;x<=W;x+=75){_ectx.beginPath();_ectx.moveTo(x,0);_ectx.lineTo(x,H);_ectx.stroke();}
+  if(st.bpm==null)return;
+  const {i}=zoneFor(st.bpm),[dk,lt]=GRAD[i],col=lerpHex(dk,lt,.82), ppb=W/3.0, base=H*0.60, amp=H*0.40;
+  _ectx.beginPath();
+  for(let x=0;x<W;x++){ const bb=(W-1-x)/ppb; const p=((_ephase-bb)%1+1)%1; const y=base-ecgVal(p)*amp; if(x===0)_ectx.moveTo(x,y); else _ectx.lineTo(x,y); }
+  _ectx.strokeStyle=col; _ectx.lineWidth=2.3; _ectx.lineJoin='round'; _ectx.lineCap='round'; _ectx.shadowColor=col; _ectx.shadowBlur=8; _ectx.stroke(); _ectx.shadowBlur=0;
 }
+function ecgLoop(ts){ const dt=_elast?(ts-_elast)/1000:0; _elast=ts; const rate=st.bpm?st.bpm/60:0; _ephase=(_ephase+dt*rate)%1; drawECG(); requestAnimationFrame(ecgLoop); }
+requestAnimationFrame(ecgLoop);
 
 /* ---------- render stats ---------- */
 function renderStats(){
@@ -345,7 +373,7 @@ function startRest(sec){
   loop(); renderPanel();
 }
 
-/* ---------- alerts (beep + iPhone built-in voice) ---------- */
+/* ===== DO NOT REMOVE: ALERTS — beep + iPhone built-in voice (desk nudge, redline, rest sag) ===== */
 let actx, voices=[], primed=false;
 function beep(n=2){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended')actx.resume(); let t=actx.currentTime;
   for(let i=0;i<n;i++){const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=880;o.connect(g);g.connect(actx.destination);g.gain.setValueAtTime(.0008,t);g.gain.exponentialRampToValueAtTime(.4,t+.02);g.gain.exponentialRampToValueAtTime(.0008,t+.2);o.start(t);o.stop(t+.22);t+=.3;} }catch(e){} }
@@ -357,14 +385,13 @@ if('speechSynthesis'in window){ loadVoices(); speechSynthesis.onvoiceschanged=lo
 const DESK_PHRASES=["Time to stand up and move.","Let's get moving — stand up and walk.","Heart rate's low. Stand and walk it up."];
 function fireNudge(){ st.nudges++; alertOut(DESK_PHRASES[Math.floor(Math.random()*DESK_PHRASES.length)],3); if(navigator.vibrate)navigator.vibrate([220,120,220,120,220]); document.body.classList.add('nudge'); setTimeout(()=>document.body.classList.remove('nudge'),2200); renderStats(); }
 
-/* ---------- 1s loop ---------- */
+/* ===== DO NOT REMOVE: 1s LOOP — stats, daily rollover, Desk nudge, redline + rest-sag voice ===== */
 function kcalMin(hr){const w=S.weightLb/2.2046,a=S.age;let v=S.sex==='male'?(-55.0969+.6309*hr+.1988*w+.2017*a)/4.184:(-20.4022+.4472*hr-.1263*w+.074*a)/4.184;return Math.max(0,v);}
 setInterval(()=>{
   if(st.bpm==null)return;
   const tk=dateKey();
   if(tk!==st.day){ flush(); st.day=tk; st.activeSec=0; st.kcal=0; st.nudges=0; st.zoneSec=[0,0,0,0,0,0]; st.logged={}; }
   st.zoneSec[zoneFor(st.bpm).i]++; st.kcal+=kcalMin(st.bpm)/60;
-  trace.push(st.bpm); if(trace.length>TRACE_MAX)trace.shift();
   if(st.bpm>=S.moveFloor)st.activeSec++;
   if(st.mode==='desk'){
     if(st.bpm<S.moveFloor){ if(st.belowSince==null)st.belowSince=Date.now(); if(Date.now()-st.belowSince>=S.nudgeDelay*1000){fireNudge();st.belowSince=Date.now();} }
@@ -393,8 +420,8 @@ async function connect(){
   }catch(err){ if(err&&err.name==='NotFoundError')return; }}
   startDemo();
 }
-function disconnect(){ if(st.btChar){try{st.btChar.stopNotifications();}catch(e){}st.btChar=null;} if(st.demo){clearInterval(st.demo);st.demo=0;} st.bpm=null; trace.length=0; setConn(null); render(); }
-function startDemo(){ setConn('demo'); st.bpm=85; trace.length=0; for(let i=0;i<24;i++)trace.push(82+Math.round(Math.sin(i/3)*4)); if(actx&&actx.state==='suspended')actx.resume();
+function disconnect(){ if(st.btChar){try{st.btChar.stopNotifications();}catch(e){}st.btChar=null;} if(st.demo){clearInterval(st.demo);st.demo=0;} st.bpm=null; setConn(null); render(); }
+function startDemo(){ setConn('demo'); st.bpm=85; if(actx&&actx.state==='suspended')actx.resume();
   st.demo=setInterval(()=>{ const base = st.mode==='desk'?86:(st.mode==='walk'?120:108);
     if(st.src==='demo' && Math.abs(st.demoT-base)>40) st.demoT=base;
     st.demoT+= (base-st.demoT)*0.04 + (Math.random()-0.5)*5;
@@ -404,7 +431,7 @@ function startDemo(){ setConn('demo'); st.bpm=85; trace.length=0; for(let i=0;i<
 }
 $('#conn').onclick=connect;
 
-/* ---------- mode tabs ---------- */
+/* ===== DO NOT REMOVE: MODE TABS handler (Desk / Walk / Lift switching) ===== */
 $$('.tab').forEach(t=>t.onclick=()=>{st.mode=t.dataset.mode;$$('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');st.belowSince=null;if(st.src==='demo')st.demoT= st.mode==='desk'?86:(st.mode==='walk'?120:108);render();});
 
 /* ---------- workout sheet ---------- */
